@@ -45,6 +45,8 @@ import play.mvc.Http.{ Cookie => JCookie }
  * @param secure whether this cookie is secured, sent only for HTTPS requests
  * @param httpOnly whether this cookie is HTTP only, i.e. not accessible from client-side JavaScript code
  * @param sameSite defines cookie access restriction: first-party or same-site context
+ * @param partitioned whether the Partitioned attribute of the cookie should be set (true) or not (false) to support CHIPS
+ *                    (Cookies Having Independent Partitioned State)
  */
 case class Cookie(
     name: String,
@@ -54,7 +56,8 @@ case class Cookie(
     domain: Option[String] = None,
     secure: Boolean = false,
     httpOnly: Boolean = true,
-    sameSite: Option[Cookie.SameSite] = None
+    sameSite: Option[Cookie.SameSite] = None,
+    partitioned: Boolean = false,
 ) {
   lazy val asJava = {
     new JCookie(
@@ -65,7 +68,8 @@ case class Cookie(
       domain.orNull,
       secure,
       httpOnly,
-      sameSite.map(_.asJava).orNull
+      sameSite.map(_.asJava).orNull,
+      partitioned,
     )
   }
 }
@@ -133,15 +137,18 @@ object Cookie {
  * @param path the path of the cookie, defaults to the root path
  * @param domain the cookie domain
  * @param secure whether this cookie is secured
+ * @param sameSite the SameSite attribute of the cookie
+ * @param secure whether this cookie is partitioned
  */
 case class DiscardingCookie(
     name: String,
     path: String = "/",
     domain: Option[String] = None,
     secure: Boolean = false,
-    sameSite: Option[SameSite] = None
+    sameSite: Option[SameSite] = None,
+    partitioned: Boolean = false,
 ) {
-  def toCookie = Cookie(name, "", Some(Cookie.DiscardedMaxAge), path, domain, secure, false, sameSite)
+  def toCookie = Cookie(name, "", Some(Cookie.DiscardedMaxAge), path, domain, secure, false, sameSite, partitioned)
 }
 
 /**
@@ -284,6 +291,7 @@ trait CookieHeaderEncoding {
       nc.setSecure(c.secure)
       nc.setHttpOnly(c.httpOnly)
       nc.setSameSite(c.sameSite.map(_.value).orNull)
+      nc.setPartitioned(c.partitioned)
       encoder.encode(nc)
     }
     newCookies.mkString(SetCookieHeaderSeparator)
@@ -324,7 +332,8 @@ trait CookieHeaderEncoding {
           Option(cookie.domain),
           cookie.isSecure,
           cookie.isHttpOnly,
-          Option(cookie.sameSite).flatMap(SameSite.parse)
+          Option(cookie.sameSite).flatMap(SameSite.parse),
+          cookie.isPartitioned,
         )
         newCookies.map(Cookie.validatePrefix)
       }.getOrElse {
@@ -472,11 +481,16 @@ trait CookieBaker[T <: AnyRef] { self: CookieDataCodec =>
   def sameSite: Option[Cookie.SameSite] = None
 
   /**
+   * `true` if the Cookie should have the Partitioned flag. Defaults to false.
+   */
+  def partitioned = false
+
+  /**
    * Encodes the data as a `Cookie`.
    */
   def encodeAsCookie(data: T): Cookie = {
     val cookie = encode(serialize(data))
-    Cookie(COOKIE_NAME, cookie, maxAge, path, domain, secure, httpOnly, sameSite)
+    Cookie(COOKIE_NAME, cookie, maxAge, path, domain, secure, httpOnly, sameSite, partitioned)
   }
 
   /**
@@ -499,7 +513,7 @@ trait CookieBaker[T <: AnyRef] { self: CookieDataCodec =>
       }
     }
 
-  def discard = DiscardingCookie(COOKIE_NAME, path, domain, secure, sameSite)
+  def discard = DiscardingCookie(COOKIE_NAME, path, domain, secure, sameSite, partitioned)
 
   /**
    * Builds the cookie object from the given data map.

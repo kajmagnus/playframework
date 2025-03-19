@@ -29,6 +29,7 @@ public class DefaultCookie implements Cookie {
   private boolean secure;
   private boolean httpOnly;
   private String sameSite;
+  private boolean partitioned;
 
   /**
    * Creates a new cookie with the specified name and value.
@@ -117,6 +118,26 @@ public class DefaultCookie implements Cookie {
 
   public void setHttpOnly(boolean httpOnly) {
     this.httpOnly = httpOnly;
+  }
+
+  /**
+   * Checks to see if this {@link Cookie} is partitioned
+   *
+   * @return True if this {@link Cookie} is partitioned, otherwise false
+   */
+  @Override
+  public boolean isPartitioned() {
+    return partitioned;
+  }
+
+  /**
+   * Sets the {@code Partitioned} attribute of this {@link Cookie}
+   *
+   * @param partitioned True if this {@link Cookie} is to be partitioned, otherwise false
+   */
+  @Override
+  public void setPartitioned(boolean partitioned) {
+    this.partitioned = partitioned;
   }
 
   @Override
@@ -238,6 +259,9 @@ public class DefaultCookie implements Cookie {
     }
     if (sameSite() != null) {
       buf.append(", SameSite=").append(sameSite);
+    }
+    if (isPartitioned()) {
+      buf.append(", Partitioned");
     }
     return buf.toString();
   }
