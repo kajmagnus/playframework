@@ -21,14 +21,22 @@ Global / onLoad := (Global / onLoad).value.andThen { s =>
 }
 
 // Makes sure to increase the version and remove the distance
+// [KajMagnus] Let's just hardcode to current version + suffix, for now.
+ThisBuild / version := "2.9.12-partitioned-cookies"
+/*
 ThisBuild / version := dynverGitDescribeOutput.value
   .mkVersion(out => versionFmt(out, dynverSonatypeSnapshots.value), fallbackVersion(dynverCurrentDate.value))
+  */
+
+ThisBuild / dynver := (ThisBuild / version).value
+/*
 ThisBuild / dynver := {
   val d = new java.util.Date
   sbtdynver.DynVer
     .getGitDescribeOutput(d)
     .mkVersion(out => versionFmt(out, dynverSonatypeSnapshots.value), fallbackVersion(d))
 }
+*/
 
 ThisBuild / javafmtFormatterCompatibleJavaVersion := 11
 
